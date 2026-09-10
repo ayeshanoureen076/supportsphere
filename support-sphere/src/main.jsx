@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowUpRight,
   Bell,
+  Bot,
   BookOpen,
   ChevronDown,
   Clock3,
@@ -17,6 +18,7 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  Send,
   Settings,
   ShieldAlert,
   SlidersHorizontal,
@@ -73,6 +75,11 @@ function App() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showTicket, setShowTicket] = useState(false)
   const [toast, setToast] = useState('')
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const [assistantDraft, setAssistantDraft] = useState('')
+  const [assistantMessages, setAssistantMessages] = useState([
+    { from: 'assistant', text: 'Hi there. I am Sphere Assist, your SupportSphere guide. How can I help you today?' },
+  ])
 
   const visibleTickets = useMemo(() => tickets.filter((ticket) => {
     const matchesChannel = activeChannel === 'All channels' || ticket.channel === activeChannel
@@ -88,6 +95,19 @@ function App() {
   const notify = (message) => {
     setToast(message)
     window.setTimeout(() => setToast(''), 2400)
+  }
+
+  const sendAssistantMessage = (message = assistantDraft) => {
+    const question = message.trim()
+    if (!question) return
+    const normalized = question.toLowerCase()
+    let response = 'I can help with tickets, billing, account access, integrations, and workspace settings. Could you share a little more detail about what you need?'
+    if (normalized.includes('billing') || normalized.includes('invoice') || normalized.includes('payment')) response = 'I can help with billing. Please open a ticket with your workspace name and invoice number, and our billing team will review it. I can also start that ticket for you.'
+    if (normalized.includes('password') || normalized.includes('login') || normalized.includes('access')) response = 'For account access, confirm that you are using the email assigned to your workspace and request a password reset from the sign-in screen. If you are still blocked, I can create an access ticket for the support team.'
+    if (normalized.includes('slack') || normalized.includes('whatsapp') || normalized.includes('telegram') || normalized.includes('integration')) response = 'SupportSphere connects Slack, WhatsApp, Telegram, Website Chat, and Messenger. An admin can enable channels from Settings, then assign an owner for incoming conversations.'
+    if (normalized.includes('ticket') || normalized.includes('problem') || normalized.includes('issue')) response = 'I can help get this moving. Share the issue, affected customer, and urgency, and I will prepare the right support handoff for your team.'
+    setAssistantMessages(messages => [...messages, { from: 'user', text: question }, { from: 'assistant', text: response }])
+    setAssistantDraft('')
   }
 
   const handleShellClick = (event) => {
@@ -137,6 +157,7 @@ function App() {
           <div className="breadcrumb"><span>Workspace</span><span>/</span><strong>{activePage}</strong></div>
           <div className="topbar-actions">
             <label className="search-box"><Search size={17} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search anything" /><kbd>⌘ K</kbd></label>
+            <button className={`assistant-trigger ${assistantOpen ? 'active' : ''}`} onClick={() => setAssistantOpen(!assistantOpen)}><Bot size={16} /> Sphere Assist</button>
             <div className="notification-wrap"><button className="icon-button notification-button" aria-label="Toggle notifications" onClick={() => setShowNotifications(!showNotifications)}><Bell size={19} /><i /></button>{showNotifications && <div className="notification-popover"><div><strong>Notifications</strong><span>3 new</span></div><p><ShieldAlert size={16} /> Ticket #SS-1046 was escalated</p><p><UserRound size={16} /> Maya accepted a new assignment</p><p><Target size={16} /> Weekly resolution goal reached</p></div>}</div>
             <div className="avatar avatar-coral top-avatar">JR</div>
           </div>
@@ -153,6 +174,7 @@ function App() {
         </div>
       </main>
       {showTicket && <TicketModal onClose={() => setShowTicket(false)} />}
+      {assistantOpen && <AssistantPanel messages={assistantMessages} draft={assistantDraft} setDraft={setAssistantDraft} onSend={sendAssistantMessage} onClose={() => setAssistantOpen(false)} onCreateTicket={() => { setAssistantOpen(false); setShowTicket(true) }} />}
       {toast && <div className="toast" role="status"><Zap size={15} />{toast}</div>}
     </div>
   )
@@ -192,6 +214,7 @@ function TeamPage() { return <><PageHeader eyebrow="People & permissions" title=
 function ReportsPage() { return <><PageHeader eyebrow="Insights & reporting" title="Reports" description="Turn support activity into a better customer experience." action="Export report" onAction={() => {}} /><section className="report-layout"><div className="panel report-main"><div className="panel-heading"><div><h2>Resolution performance</h2><p>Tickets resolved over the last 30 days</p></div><button className="outline-button">Last 30 days <ChevronDown size={14} /></button></div><div className="report-chart"><div className="report-stat"><strong>1,842</strong><span>tickets resolved</span><b>↗ 12.8%</b></div><div className="line-chart"><div className="chart-lines"><i /><i /><i /><i /></div><svg viewBox="0 0 620 190" preserveAspectRatio="none"><path d="M0 155 C42 140, 65 160, 100 126 S155 90, 190 120 S235 135, 270 92 S335 102, 370 70 S420 92, 455 55 S520 74, 550 37 S590 50, 620 20" fill="none" stroke="var(--red)" strokeWidth="4" strokeLinecap="round" /></svg><div className="chart-x"><span>Aug 12</span><span>Aug 19</span><span>Aug 26</span><span>Sep 02</span><span>Sep 10</span></div></div></div></div><div className="panel score-panel"><div className="panel-heading"><div><h2>CSAT score</h2><p>Customer satisfaction</p></div><MoreHorizontal size={18} /></div><strong className="score">4.8<span>/5</span></strong><div className="stars">★★★★★</div><p className="score-note">Based on 1,204 responses</p><div className="score-bars"><span><i style={{ width: '91%' }} /><b>5</b></span><span><i style={{ width: '65%' }} /><b>4</b></span><span><i style={{ width: '23%' }} /><b>3</b></span><span><i style={{ width: '8%' }} /><b>2</b></span><span><i style={{ width: '4%' }} /><b>1</b></span></div></div></section></> }
 function SettingsPage() { return <><PageHeader eyebrow="Workspace configuration" title="Settings" description="Configure SupportSphere around the way your team works." /><div className="settings-layout"><div className="settings-nav"><button className="active"><Settings size={16} />General</button><button><MessageCircle size={16} />Integrations</button><button><Bell size={16} />Notifications</button><button><UsersRound size={16} />Members & roles</button></div><section className="panel settings-panel"><div className="panel-heading"><div><h2>General settings</h2><p>Manage your workspace identity and preferences.</p></div></div><label className="field-label">Workspace name<input defaultValue="Northstar Labs" /></label><label className="field-label">Workspace URL<div className="input-prefix"><span>support-sphere.com/</span><input defaultValue="northstar-labs" /></div></label><label className="toggle-row"><span><strong>Show customer satisfaction survey</strong><small>Ask customers for feedback after every resolved ticket.</small></span><i className="toggle on" /></label><label className="toggle-row"><span><strong>Business hours</strong><small>Only notify agents during configured work hours.</small></span><i className="toggle on" /></label><button className="primary-button save-button">Save changes</button></section></div></> }
 function HelpPage() { return <><PageHeader eyebrow="Support academy" title="Help center" description="Practical resources for making every support interaction count." /><div className="help-grid"><div className="panel help-resource"><div className="resource-icon red"><BookOpen size={20} /></div><h2>Support playbook</h2><p>Build a consistent, thoughtful support experience with proven workflows.</p><button className="ghost-button">Read guide <ArrowUpRight size={15} /></button></div><div className="panel help-resource"><div className="resource-icon brown"><Zap size={20} /></div><h2>Get started with channels</h2><p>Connect your customer channels and bring every conversation into one view.</p><button className="ghost-button">Explore integrations <ArrowUpRight size={15} /></button></div><div className="panel help-resource"><div className="resource-icon beige"><LifeBuoy size={20} /></div><h2>Contact our team</h2><p>Have a question? Our specialists are ready to help you get more from SupportSphere.</p><button className="ghost-button">Send a message <ArrowUpRight size={15} /></button></div></div></> }
+function AssistantPanel({ messages, draft, setDraft, onSend, onClose, onCreateTicket }) { return <section className="assistant-panel" aria-label="Sphere Assist support assistant"><div className="assistant-header"><div className="assistant-identity"><div className="assistant-avatar"><Bot size={18} /></div><div><strong>Sphere Assist</strong><span><i />Available 24/7</span></div></div><button className="icon-button" aria-label="Close assistant" onClick={onClose}><X size={17} /></button></div><div className="assistant-intro"><span>Support assistant</span><p>Get quick answers or connect a question to your support team.</p></div><div className="assistant-messages">{messages.map((message, index) => <div className={`assistant-message ${message.from}`} key={`${message.from}-${index}`}>{message.from === 'assistant' && <Bot size={14} />}{message.text}</div>)}</div><div className="assistant-suggestions"><button onClick={() => onSend('How do I connect Slack?')}>Connect Slack</button><button onClick={() => onSend('I have a billing problem')}>Billing help</button><button onClick={() => onSend('I need help with a ticket')}>Ticket support</button></div><form className="assistant-composer" onSubmit={event => { event.preventDefault(); onSend() }}><input value={draft} onChange={event => setDraft(event.target.value)} placeholder="Ask a support question..." aria-label="Ask Sphere Assist" /><button type="submit" aria-label="Send question"><Send size={16} /></button></form><button className="assistant-ticket-link" onClick={onCreateTicket}><Plus size={14} /> Create a support ticket</button></section> }
 function TicketModal({ onClose }) { return <div className="modal-backdrop" onClick={onClose}><div className="ticket-modal" onClick={event => event.stopPropagation()}><div className="modal-header"><div><div className="eyebrow"><span className="eyebrow-dot" />New support ticket</div><h2>Create a ticket</h2></div><button className="icon-button" onClick={onClose} aria-label="Close ticket dialog"><X size={19} /></button></div><div className="modal-form"><label className="field-label">Customer<input placeholder="Search customers" /></label><label className="field-label">Subject<input placeholder="What does the customer need help with?" /></label><div className="form-split"><label className="field-label">Priority<select defaultValue="Medium"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></label><label className="field-label">Channel<select defaultValue="Website chat"><option>Website chat</option><option>WhatsApp</option><option>Slack</option><option>Messenger</option></select></label></div><label className="field-label">Description<textarea placeholder="Add context for the assigned agent..." rows="4" /></label></div><div className="modal-actions"><button className="ghost-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={onClose}>Create ticket <ArrowUpRight size={15} /></button></div></div></div> }
 
 export default App
